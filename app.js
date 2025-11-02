@@ -375,3 +375,29 @@ document.getElementById("download-csv").onclick = () => {
   link.click();
   document.body.removeChild(link);
 };
+// Guarda todos los datos en localStorage
+function saveToStorage() {
+  localStorage.setItem('controlGastosHistorial', JSON.stringify(months));
+  alert("¡Mes guardado! El historial permanece aunque cierres la app.");
+}
+
+// Carga los datos guardados al abrir la app
+function loadFromStorage() {
+  const data = localStorage.getItem('controlGastosHistorial');
+  if (data) months = JSON.parse(data);
+}
+
+// Llama esto al iniciar
+loadFromStorage();
+render();
+
+// Modifica tu botón “Guardar Mes”
+document.getElementById("save-month").onclick = () => {
+  saveToStorage();
+  render();
+};
+
+// Tu sección historial muestra todo lo guardado (ya lo hace el render actual)
+
+// Modifica el botón para descargar CSV para tomar datos de months (ya lo hace el código anterior)
+
