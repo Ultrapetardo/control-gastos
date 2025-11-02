@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Control de Gastos Mejorado</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="styles.css">
+  <!-- Chart.js para el gráfico circular -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <header>
+    <h1>Control de Gastos</h1>
+    <div>
+      <label for="month-select">Mes:</label>
+      <select id="month-select"></select>
+      <button id="save-month">Guardar Mes</button>
+    </div>
+    <nav>
+      <button id="tab-actual" class="tab active">Mes Actual</button>
+      <button id="tab-historial" class="tab">Meses Anteriores</button>
+    </nav>
+  </header>
+  <main id="tab-content-actual" class="visible">
+    <section class="card">
+      <h2>Salario Mensual</h2>
+      <input id="salary-input" type="number" min="0" placeholder="Salario COP" />
+      <button id="save-salary">Guardar</button>
+      <span id="salary-display"></span>
+    </section>
+    <section class="card">
+      <h2>Gastos Fijos</h2>
+      <ul id="fixed-list"></ul>
+      <button id="add-fixed">Agregar Gasto Fijo</button>
+      <span id="fixed-total"></span>
+    </section>
+    <section class="card">
+      <h2>Gastos Inesperados</h2>
+      <ul id="unexpected-list"></ul>
+      <button id="add-unexpected">Agregar Gasto Inesperado</button>
+      <span id="unexpected-total"></span>
+    </section>
+    <section class="card">
+      <h2>Saldo Disponible</h2>
+      <span id="balance-display"></span>
+    </section>
+    <section class="card">
+      <h2>Alertas Activas</h2>
+      <ul id="alerts-list"></ul>
+    </section>
+    <section class="card">
+      <h2>Resumen Gráfico</h2>
+      <canvas id="summaryChart" width="360" height="360"></canvas>
+    </section>
+  </main>
+  <main id="tab-content-historial" class="hidden">
+    <section class="card">
+      <h2>Historial Mensual</h2>
+      <div style="overflow-x:auto">
+        <table id="history-table">
+          <thead>
+            <tr>
+              <th>Mes</th>
+              <th>Salario</th>
+              <th>Gasto Fijo</th>
+              <th>Gasto Inesperado</th>
+              <th>Saldo</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+  <!-- Modal para gastos fijos y inesperados -->
+  <dialog id="expenseDialog">
+    <form id="expenseForm" method="dialog">
+      <h3 id="form-title">Gasto</h3>
+      <label>
+        Nombre
+        <input id="expName" name="name" required>
+      </label>
+      <label>
+        Monto
+        <input id="expAmount" name="amount" type="number" min="1" required>
+      </label>
+      <label id="expDateLabel" style="display:none">
+        Fecha límite de pago
+        <input id="expDate" name="date" type="date">
+      </label>
+      <label>
+        Alerta porcentaje (opcional)
+        <input id="expAlertPct" name="alertPct" type="number" min="1" max="100" placeholder="Porcentaje (%)">
+      </label>
+      <menu>
+        <button type="button" id="btnCancel">Cancelar</button>
+        <button type="submit" id="btnSave">Guardar</button>
+      </menu>
+    </form>
+  </dialog>
+  <script src="app.js"></script>
+</body>
+</html>
