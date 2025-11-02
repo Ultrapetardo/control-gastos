@@ -1,14 +1,13 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icono-192.png">
   <meta name="theme-color" content="#16a085"/>
   <title>Control de Gastos Mejorado</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="styles.css">
-  <!-- Chart.js para el gráfico circular -->
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="styles.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
@@ -17,6 +16,7 @@
     <div>
       <label for="month-select">Mes:</label>
       <select id="month-select"></select>
+      <button id="import-prev-month">Importar Gastos Mes Anterior</button>
       <button id="save-month">Guardar Mes</button>
     </div>
     <nav>
@@ -59,41 +59,57 @@
   <main id="tab-content-historial" class="hidden">
     <section class="card">
       <h2>Historial Mensual</h2>
-      <div style="overflow-x:auto">
+      <div style="overflow-x:auto;">
         <table id="history-table">
           <thead>
             <tr>
               <th>Mes</th>
               <th>Salario</th>
-              <th>Gasto Fijo</th>
-              <th>Gasto Inesperado</th>
+              <th>Gastos Fijos</th>
+              <th>Gastos Inesperados</th>
               <th>Saldo</th>
             </tr>
           </thead>
           <tbody></tbody>
         </table>
       </div>
+      <button id="download-csv">Descargar Historial CSV</button>
     </section>
   </main>
-  <!-- Modal para gastos fijos y inesperados -->
+
   <dialog id="expenseDialog">
     <form id="expenseForm" method="dialog">
       <h3 id="form-title">Gasto</h3>
       <label>
         Nombre
-        <input id="expName" name="name" required>
+        <input id="expName" name="name" required />
       </label>
       <label>
         Monto
-        <input id="expAmount" name="amount" type="number" min="1" required>
+        <input id="expAmount" name="amount" type="number" min="1" required />
       </label>
-      <label id="expDateLabel" style="display:none">
+      <label>
+        Descripción
+        <textarea id="expDescription" name="description" rows="2" placeholder="Detalles adicionales"></textarea>
+      </label>
+      <label id="expDateLabel" style="display:none;">
         Fecha límite de pago
-        <input id="expDate" name="date" type="date">
+        <input id="expDate" name="date" type="date" />
       </label>
       <label>
         Alerta porcentaje (opcional)
-        <input id="expAlertPct" name="alertPct" type="number" min="1" max="100" placeholder="Porcentaje (%)">
+        <input
+          id="expAlertPct"
+          name="alertPct"
+          type="number"
+          min="1"
+          max="100"
+          placeholder="Porcentaje (%)"
+        />
+      </label>
+      <label id="expPaidLabel" style="display:none;">
+        <input id="expPaid" name="paid" type="checkbox" />
+        Pagado
       </label>
       <menu>
         <button type="button" id="btnCancel">Cancelar</button>
@@ -101,6 +117,8 @@
       </menu>
     </form>
   </dialog>
+
   <script src="app.js"></script>
 </body>
 </html>
+
