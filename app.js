@@ -22,7 +22,7 @@ function monthKey(month, year) {
 
 // Inicializa select mes
 const monthSelect = document.getElementById("month-select");
-for (let y = currentYear - 1; y <= currentYear; y++) {
+for (let y = currentYear - 1; y <= currentYear + 5; y++) {
   for (let m = 0; m < 12; m++) {
     const mk = monthKey(m, y);
     const opt = document.createElement("option");
@@ -61,10 +61,11 @@ function getMonthObj() {
   let key = monthKey(currentMonth, currentYear);
   if (!months[key]) {
     months[key] = {
-      salary: 0,
-      fixedExpenses: [],
-      unexpectedExpenses: [],
-      alerts: [],
+  salary: 0,
+  bonuses: [],  // Nueva lista para primas
+  fixedExpenses: [],
+  unexpectedExpenses: [],
+  alerts: [],
     };
   }
   return months[key];
@@ -165,6 +166,39 @@ function renderUnexpected() {
   const total = obj.unexpectedExpenses.reduce((a, e) => a + e.amount, 0);
   document.getElementById("unexpected-total").textContent = "Total: " + fmtCOP.format(total);
 }
+// Gestión de primas
+document.getElementById('add-bonus').onclick = () => openBonusDialog();
+
+function renderBonuses() {
+  let obj = getMonthObj();
+  const list = document.getElementById('bonus-list');
+  list.innerHTML = '';
+  obj.bonuses.forEach((bonus, i) => {
+    const li = document.createElement('li');
+    let fechaBonus = bonus.date ? ` (${bonus.date})` : '';
+    li.innerHTML = `<span>${bonus.name}: ${fmtCOP.format(bonus.amount)}${fechaBonus}</span>
+      <span class="gasto-actions">
+        <button onclick="editBonus(${i})">✏️</button>
+        <button onclick="deleteBonus(${i})">🗑️</button>
+      </span>`;
+    list.appendChild(li);
+  });
+  const total = obj.bonuses.reduce((a, e) => a + e.amount, 0);
+  document.getElementById('bonus-total').textContent = 'Total primas: ' + fmtCOP.format(total);
+}
+
+window.editBonus = function(idx) {
+  let obj = getMonthObj();
+  openBonusDialog(obj.bonuses[idx], idx);
+};
+
+window.deleteBonus = function(idx) {
+  let obj = getMonthObj();
+  if (confirm('¿Eliminar esta prima?')) {
+    obj.bonuses.splice(idx, 1);
+    render();
+  }
+};
 
 // Editar y eliminar gastos
 window.editExpense = function (type, idx) {
@@ -186,7 +220,9 @@ function renderBalance() {
   let obj = getMonthObj();
   const totalFixed = obj.fixedExpenses.reduce((a, e) => a + e.amount, 0);
   const totalUnexpected = obj.unexpectedExpenses.reduce((a, e) => a + e.amount, 0);
-  const balance = obj.salary - totalFixed - totalUnexpected;
+  const totalBonuses = obj.bonuses.reduce((a, e) => a + e.amount, 0);
+const balance = obj.salary + totalBonuses - totalFixed - totalUnexpected;
+
   document.getElementById("balance-display").textContent = fmtCOP.format(balance);
 }
 
@@ -276,6 +312,7 @@ function renderGraph() {
 // Render global
 function render() {
   renderSalary();
+  renderBonuses();  // Nueva línea
   renderFixed();
   renderUnexpected();
   renderBalance();
@@ -348,6 +385,54 @@ dlg.addEventListener("click", function (ev) {
   const inside =
     ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom;
   if (!inside) dlg.close("canceled");
+});
+// Modal para primas
+const bonusDlg = document.getElementById('bonusDialog');
+const bonusForm = document.getElementById('bonusForm');
+let editBonusIdx = null;
+
+function openBonusDialog(bonus = null, idx = null) {
+  editBonusIdx = idx;
+  bonusForm.reset();
+  if (bonus) {
+    document.getElementById('bonusName').value = bonus.name || '';
+    document.getElementById('bonusAmount').value = bonus.amount || '';
+    document.getElementById('bonusDate').value = bonus.date || '';
+  }
+  bonusDlg.showModal();
+  document.getElementById('bonusName').focus();
+}
+
+bonusForm.onsubmit = function(e) {
+  e.preventDefault();
+  if (!bonusForm.reportValidity()) return;
+  const name = document.getElementById('bonusName').value.trim();
+  const amount = Number(document.getElementById('bonusAmount').value);
+  const date = document.getElementById('bonusDate').value;
+  let obj = getMonthObj();
+  const nuevo = { name, amount, date };
+  if (editBonusIdx != null) {
+    obj.bonuses[editBonusIdx] = nuevo;
+  } else {
+    obj.bonuses.push(nuevo);
+  }
+  bonusDlg.close('saved');
+  render();
+  editBonusIdx = null;
+};
+
+document.getElementById('btnBonusCancel').onclick = function() {
+  bonusDlg.close('canceled');
+};
+
+bonusDlg.addEventListener('close', function() {
+  if (bonusDlg.returnValue !== 'saved') bonusForm.reset();
+});
+
+bonusDlg.addEventListener('click', function(ev) {
+  const r = bonusDlg.getBoundingClientRect();
+  const inside = ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom;
+  if (!inside) bonusDlg.close('canceled');
 });
 
 // CSV export
