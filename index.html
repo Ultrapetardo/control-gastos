@@ -32,6 +32,13 @@
       <span id="salary-display"></span>
     </section>
     <section class="card">
+  <h2>Primas e Ingresos Extra</h2>
+  <ul id="bonus-list"></ul>
+  <button id="add-bonus">Agregar Prima</button>
+  <span id="bonus-total"></span>
+</section>
+
+    <section class="card">
       <h2>Gastos Fijos</h2>
       <ul id="fixed-list"></ul>
       <button id="add-fixed">Agregar Gasto Fijo</button>
@@ -65,6 +72,7 @@
             <tr>
               <th>Mes</th>
               <th>Salario</th>
+              <th>Primas</th>
               <th>Gastos Fijos</th>
               <th>Gastos Inesperados</th>
               <th>Saldo</th>
@@ -92,6 +100,28 @@
   Fecha del gasto
   <input id="expExpenseDate" name="expenseDate" type="date" required />
 </label>
+      <dialog id="bonusDialog">
+  <form id="bonusForm" method="dialog">
+    <h3>Prima o Ingreso Extra</h3>
+    <label>
+      Nombre
+      <input id="bonusName" name="name" placeholder="Ej: Prima junio" required />
+    </label>
+    <label>
+      Monto
+      <input id="bonusAmount" name="amount" type="number" min="1" required />
+    </label>
+    <label>
+      Fecha
+      <input id="bonusDate" name="date" type="date" />
+    </label>
+    <menu>
+      <button type="button" id="btnBonusCancel">Cancelar</button>
+      <button type="submit" id="btnBonusSave">Guardar</button>
+    </menu>
+  </form>
+</dialog>
+
 
       <label>
         Descripción
