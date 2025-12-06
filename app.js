@@ -13,14 +13,14 @@ let currentMonth = new Date().getMonth();
 let currentYear = new Date().getFullYear();
 let months = {};
 let alertsConfig = {
-  percentage: 80, // alerta por defecto al alcanzar 80%
+  percentage: 80, // alerta general al 80% del salario
 };
 
 function monthKey(month, year) {
   return `${year}-${(month + 1).toString().padStart(2, "0")}`;
 }
 
-// Inicializa select mes
+// Inicializa selector de meses (años desde año actual-1 hasta año actual+5)
 const monthSelect = document.getElementById("month-select");
 for (let y = currentYear - 1; y <= currentYear + 5; y++) {
   for (let m = 0; m < 12; m++) {
@@ -61,11 +61,11 @@ function getMonthObj() {
   let key = monthKey(currentMonth, currentYear);
   if (!months[key]) {
     months[key] = {
-  salary: 0,
-  bonuses: [],  // Nueva lista para primas
-  fixedExpenses: [],
-  unexpectedExpenses: [],
-  alerts: [],
+      salary: 0,
+      bonuses: [],            // NUEVO: lista de primas
+      fixedExpenses: [],
+      unexpectedExpenses: [],
+      alerts: [],
     };
   }
   return months[key];
@@ -78,10 +78,11 @@ document.getElementById("save-salary").onclick = () => {
   render();
 };
 
-// Guardar mes (solo refresca)
+// Guardar mes en localStorage
 document.getElementById("save-month").onclick = () => {
+  saveToStorage();
   render();
-  alert("¡Mes guardado! Puedes consultarlo en 'Meses Anteriores'.");
+  alert("¡Mes guardado! El historial permanece aunque cierres la app.");
 };
 
 // Importar gastos fijos del mes anterior
@@ -93,80 +94,17 @@ document.getElementById("import-prev-month").onclick = () => {
     prevYear--;
   }
   let prevKey = monthKey(prevMonth, prevYear);
-  let currentKey = monthKey(currentMonth, currentYear);
   if (!months[prevKey]) {
     alert("No hay datos del mes anterior para importar.");
     return;
   }
   let current = getMonthObj();
-  // Copiar gastos fijos (clonado simple)
-  current.fixedExpenses = months[prevKey].fixedExpenses.map(e => ({...e}));
+  current.fixedExpenses = months[prevKey].fixedExpenses.map(e => ({ ...e }));
   render();
   alert("Gastos fijos importados del mes anterior.");
 };
 
-// Render gastos fijos
-document.getElementById("add-fixed").onclick = () => openExpenseDialog("fixed");
-function renderFixed() {
-  let obj = getMonthObj();
-  const list = document.getElementById("fixed-list");
-  list.innerHTML = "";
-  obj.fixedExpenses.forEach((exp, i) => {
-    let fechaLim = exp.date ? ` (limite: ${exp.date})` : "";
-    let descripcion = exp.description ? ` | ${exp.description}` : "";
-    const clasePagado = exp.paid ? "paid" : "";
-    const li = document.createElement("li");
-    li.className = clasePagado;
-    li.innerHTML = `<span>${exp.name}: ${fmtCOP.format(exp.amount)}${fechaLim}${descripcion}</span>
-      <span class="gasto-actions">
-        <button onclick="editExpense('fixed',${i})">✏️</button>
-        <button onclick="deleteExpense('fixed',${i})">🗑️</button>
-        <label><input type="checkbox" onchange="togglePaid('fixed',${i}, this.checked)" ${
-          exp.paid ? "checked" : ""
-        }> Pagado</label>
-      </span>`;
-    list.appendChild(li);
-  });
-  const total = obj.fixedExpenses.reduce((a, e) => a + e.amount, 0);
-  document.getElementById("fixed-total").textContent = "Total: " + fmtCOP.format(total);
-}
-
-// Toggle pagado
-window.togglePaid = (type, index, checked) => {
-  let obj = getMonthObj();
-  if (type === "fixed") {
-    obj.fixedExpenses[index].paid = checked;
-  } else {
-    obj.unexpectedExpenses[index].paid = checked;
-  }
-  render();
-};
-
-// Render gastos inesperados
-document.getElementById("add-unexpected").onclick = () => openExpenseDialog("unexpected");
-function renderUnexpected() {
-  let obj = getMonthObj();
-  const list = document.getElementById("unexpected-list");
-  list.innerHTML = "";
-  obj.unexpectedExpenses.forEach((exp, i) => {
-    const clasePagado = exp.paid ? "paid" : "";
-    const li = document.createElement("li");
-    li.className = clasePagado;
-    let descripcion = exp.description ? ` | ${exp.description}` : "";
-    li.innerHTML = `<span>${exp.name}: ${fmtCOP.format(exp.amount)}${descripcion}</span>
-      <span class="gasto-actions">
-        <button onclick="editExpense('unexpected',${i})">✏️</button>
-        <button onclick="deleteExpense('unexpected',${i})">🗑️</button>
-        <label><input type="checkbox" onchange="togglePaid('unexpected',${i}, this.checked)" ${
-          exp.paid ? "checked" : ""
-        }> Pagado</label>
-      </span>`;
-    list.appendChild(li);
-  });
-  const total = obj.unexpectedExpenses.reduce((a, e) => a + e.amount, 0);
-  document.getElementById("unexpected-total").textContent = "Total: " + fmtCOP.format(total);
-}
-// Gestión de primas
+// ================= PRIMAS =================
 document.getElementById('add-bonus').onclick = () => openBonusDialog();
 
 function renderBonuses() {
@@ -200,7 +138,73 @@ window.deleteBonus = function(idx) {
   }
 };
 
-// Editar y eliminar gastos
+// ================= GASTOS FIJOS =================
+document.getElementById("add-fixed").onclick = () => openExpenseDialog("fixed");
+
+function renderFixed() {
+  let obj = getMonthObj();
+  const list = document.getElementById("fixed-list");
+  list.innerHTML = "";
+  obj.fixedExpenses.forEach((exp, i) => {
+    let fechaLim = exp.date ? ` (limite: ${exp.date})` : "";
+    let descripcion = exp.description ? ` | ${exp.description}` : "";
+    let fechaGasto = exp.expenseDate ? ` (fecha gasto: ${exp.expenseDate})` : "";
+    const clasePagado = exp.paid ? "paid" : "";
+    const li = document.createElement("li");
+    li.className = clasePagado;
+    li.innerHTML = `<span>${exp.name}: ${fmtCOP.format(exp.amount)}${fechaLim}${descripcion}${fechaGasto}</span>
+      <span class="gasto-actions">
+        <button onclick="editExpense('fixed',${i})">✏️</button>
+        <button onclick="deleteExpense('fixed',${i})">🗑️</button>
+        <label><input type="checkbox" onchange="togglePaid('fixed',${i}, this.checked)" ${
+          exp.paid ? "checked" : ""
+        }> Pagado</label>
+      </span>`;
+    list.appendChild(li);
+  });
+  const total = obj.fixedExpenses.reduce((a, e) => a + e.amount, 0);
+  document.getElementById("fixed-total").textContent = "Total: " + fmtCOP.format(total);
+}
+
+// ================= GASTOS INESPERADOS =================
+document.getElementById("add-unexpected").onclick = () => openExpenseDialog("unexpected");
+
+function renderUnexpected() {
+  let obj = getMonthObj();
+  const list = document.getElementById("unexpected-list");
+  list.innerHTML = "";
+  obj.unexpectedExpenses.forEach((exp, i) => {
+    const clasePagado = exp.paid ? "paid" : "";
+    const li = document.createElement("li");
+    li.className = clasePagado;
+    let descripcion = exp.description ? ` | ${exp.description}` : "";
+    let fechaGasto = exp.expenseDate ? ` (fecha gasto: ${exp.expenseDate})` : "";
+    li.innerHTML = `<span>${exp.name}: ${fmtCOP.format(exp.amount)}${descripcion}${fechaGasto}</span>
+      <span class="gasto-actions">
+        <button onclick="editExpense('unexpected',${i})">✏️</button>
+        <button onclick="deleteExpense('unexpected',${i})">🗑️</button>
+        <label><input type="checkbox" onchange="togglePaid('unexpected',${i}, this.checked)" ${
+          exp.paid ? "checked" : ""
+        }> Pagado</label>
+      </span>`;
+    list.appendChild(li);
+  });
+  const total = obj.unexpectedExpenses.reduce((a, e) => a + e.amount, 0);
+  document.getElementById("unexpected-total").textContent = "Total: " + fmtCOP.format(total);
+}
+
+// Toggle pagado
+window.togglePaid = (type, index, checked) => {
+  let obj = getMonthObj();
+  if (type === "fixed") {
+    obj.fixedExpenses[index].paid = checked;
+  } else {
+    obj.unexpectedExpenses[index].paid = checked;
+  }
+  render();
+};
+
+// Editar / eliminar gasto
 window.editExpense = function (type, idx) {
   let obj = getMonthObj();
   let exp = type === "fixed" ? obj.fixedExpenses[idx] : obj.unexpectedExpenses[idx];
@@ -215,25 +219,24 @@ window.deleteExpense = function (type, idx) {
   }
 };
 
-// Saldo disponible
+// ================= SALDO =================
 function renderBalance() {
   let obj = getMonthObj();
   const totalFixed = obj.fixedExpenses.reduce((a, e) => a + e.amount, 0);
   const totalUnexpected = obj.unexpectedExpenses.reduce((a, e) => a + e.amount, 0);
   const totalBonuses = obj.bonuses.reduce((a, e) => a + e.amount, 0);
-const balance = obj.salary + totalBonuses - totalFixed - totalUnexpected;
-
+  const balance = obj.salary + totalBonuses - totalFixed - totalUnexpected;
   document.getElementById("balance-display").textContent = fmtCOP.format(balance);
 }
 
-// Salario mostrado
+// ================= SALARIO MOSTRADO =================
 function renderSalary() {
   let obj = getMonthObj();
   document.getElementById("salary-input").value = obj.salary > 0 ? obj.salary : "";
   document.getElementById("salary-display").textContent = obj.salary > 0 ? fmtCOP.format(obj.salary) : "";
 }
 
-// Tabla mensual historial
+// ================= HISTORIAL =================
 function renderHistoryTable() {
   const tbody = document.querySelector("#history-table tbody");
   tbody.innerHTML = "";
@@ -243,21 +246,23 @@ function renderHistoryTable() {
       const mObj = months[k];
       const [year, monthRaw] = k.split("-");
       const month = Number(monthRaw) - 1;
+      const totalFixed = mObj.fixedExpenses.reduce((a, e) => a + e.amount, 0);
+      const totalUnexpected = mObj.unexpectedExpenses.reduce((a, e) => a + e.amount, 0);
+      const totalBonuses = mObj.bonuses ? mObj.bonuses.reduce((a, e) => a + e.amount, 0) : 0;
+      const balance = mObj.salary + totalBonuses - totalFixed - totalUnexpected;
+
       const tr = document.createElement("tr");
       tr.innerHTML = `<td>${monthNames[month]} ${year}</td>
       <td>${fmtCOP.format(mObj.salary)}</td>
-      <td>${fmtCOP.format(mObj.fixedExpenses.reduce((a, e) => a + e.amount, 0))}</td>
-      <td>${fmtCOP.format(mObj.unexpectedExpenses.reduce((a, e) => a + e.amount, 0))}</td>
-      <td>${fmtCOP.format(
-        mObj.salary -
-          mObj.fixedExpenses.reduce((a, e) => a + e.amount, 0) -
-          mObj.unexpectedExpenses.reduce((a, e) => a + e.amount, 0)
-      )}</td>`;
+      <td>${fmtCOP.format(totalBonuses)}</td>
+      <td>${fmtCOP.format(totalFixed)}</td>
+      <td>${fmtCOP.format(totalUnexpected)}</td>
+      <td>${fmtCOP.format(balance)}</td>`;
       tbody.appendChild(tr);
     });
 }
 
-// Alertas activas
+// ================= ALERTAS =================
 function renderAlerts() {
   let obj = getMonthObj();
   const ul = document.getElementById("alerts-list");
@@ -276,7 +281,9 @@ function renderAlerts() {
       ul.appendChild(li);
     }
   });
-  let totalGasto = obj.fixedExpenses.reduce((a, e) => a + e.amount, 0) + obj.unexpectedExpenses.reduce((a, e) => a + e.amount, 0);
+  let totalGasto =
+    obj.fixedExpenses.reduce((a, e) => a + e.amount, 0) +
+    obj.unexpectedExpenses.reduce((a, e) => a + e.amount, 0);
   if (obj.salary > 0 && totalGasto >= (obj.salary * alertsConfig.percentage) / 100) {
     const li = document.createElement("li");
     li.textContent = `⚠️ Has gastado más del ${alertsConfig.percentage}% de tu salario`;
@@ -284,20 +291,22 @@ function renderAlerts() {
   }
 }
 
-// Gráfica resumen
+// ================= GRÁFICO =================
 let summaryChart;
 function renderGraph() {
   let obj = getMonthObj();
   const ctx = document.getElementById("summaryChart").getContext("2d");
   const totalFixed = obj.fixedExpenses.reduce((a, e) => a + e.amount, 0);
   const totalUnexpected = obj.unexpectedExpenses.reduce((a, e) => a + e.amount, 0);
-  const balance = obj.salary - totalFixed - totalUnexpected;
+  const totalBonuses = obj.bonuses.reduce((a, e) => a + e.amount, 0);
+  const balance = obj.salary + totalBonuses - totalFixed - totalUnexpected;
+
   const data = {
-    labels: ["Gastos Fijos", "Gastos Inesperados", "Saldo"],
+    labels: ["Gastos Fijos", "Gastos Inesperados", "Primas", "Saldo"],
     datasets: [
       {
-        data: [totalFixed, totalUnexpected, Math.max(balance, 0)],
-        backgroundColor: ["#3498db", "#e67e22", "#16a085"],
+        data: [totalFixed, totalUnexpected, totalBonuses, Math.max(balance, 0)],
+        backgroundColor: ["#3498db", "#e67e22", "#9b59b6", "#16a085"],
       },
     ],
   };
@@ -309,10 +318,10 @@ function renderGraph() {
   });
 }
 
-// Render global
+// ================= RENDER GLOBAL =================
 function render() {
   renderSalary();
-  renderBonuses();  // Nueva línea
+  renderBonuses();
   renderFixed();
   renderUnexpected();
   renderBalance();
@@ -320,12 +329,10 @@ function render() {
   renderHistoryTable();
   renderGraph();
 }
-render();
 
-// Modal gastos
+// ================= MODAL GASTOS =================
 const dlg = document.getElementById("expenseDialog");
 const form = document.getElementById("expenseForm");
-const btnSave = document.getElementById("btnSave");
 const btnCancel = document.getElementById("btnCancel");
 const expDateLabel = document.getElementById("expDateLabel");
 const expPaidLabel = document.getElementById("expPaidLabel");
@@ -339,6 +346,7 @@ function openExpenseDialog(type, gasto = null, idx = null) {
   document.getElementById("form-title").textContent = type === "fixed" ? "Gasto fijo" : "Gasto inesperado";
   expDateLabel.style.display = type === "fixed" ? "block" : "none";
   expPaidLabel.style.display = type === "fixed" ? "block" : "none";
+
   if (gasto) {
     document.getElementById("expName").value = gasto.name || "";
     document.getElementById("expAmount").value = gasto.amount || "";
@@ -346,6 +354,7 @@ function openExpenseDialog(type, gasto = null, idx = null) {
     document.getElementById("expDate").value = gasto.date || "";
     document.getElementById("expAlertPct").value = gasto.alertPct || "";
     document.getElementById("expPaid").checked = gasto.paid || false;
+    document.getElementById("expExpenseDate").value = gasto.expenseDate || "";
   }
   dlg.showModal();
   document.getElementById("expName").focus();
@@ -360,8 +369,10 @@ form.onsubmit = function (e) {
   const date = document.getElementById("expDate").value;
   const alertPct = Number(document.getElementById("expAlertPct").value) || null;
   const paid = document.getElementById("expPaid").checked;
+  const expenseDate = document.getElementById("expExpenseDate").value;
+
   let obj = getMonthObj();
-  const nuevo = { name, amount, description, date, alertPct, paid };
+  const nuevo = { name, amount, description, date, alertPct, paid, expenseDate };
   if (currentType === "fixed") {
     if (editIdx != null) obj.fixedExpenses[editIdx] = nuevo;
     else obj.fixedExpenses.push(nuevo);
@@ -386,7 +397,8 @@ dlg.addEventListener("click", function (ev) {
     ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom;
   if (!inside) dlg.close("canceled");
 });
-// Modal para primas
+
+// ================= MODAL PRIMAS =================
 const bonusDlg = document.getElementById('bonusDialog');
 const bonusForm = document.getElementById('bonusForm');
 let editBonusIdx = null;
@@ -411,11 +423,8 @@ bonusForm.onsubmit = function(e) {
   const date = document.getElementById('bonusDate').value;
   let obj = getMonthObj();
   const nuevo = { name, amount, date };
-  if (editBonusIdx != null) {
-    obj.bonuses[editBonusIdx] = nuevo;
-  } else {
-    obj.bonuses.push(nuevo);
-  }
+  if (editBonusIdx != null) obj.bonuses[editBonusIdx] = nuevo;
+  else obj.bonuses.push(nuevo);
   bonusDlg.close('saved');
   render();
   editBonusIdx = null;
@@ -424,35 +433,41 @@ bonusForm.onsubmit = function(e) {
 document.getElementById('btnBonusCancel').onclick = function() {
   bonusDlg.close('canceled');
 };
-
 bonusDlg.addEventListener('close', function() {
   if (bonusDlg.returnValue !== 'saved') bonusForm.reset();
 });
-
 bonusDlg.addEventListener('click', function(ev) {
   const r = bonusDlg.getBoundingClientRect();
-  const inside = ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom;
+  const inside =
+    ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom;
   if (!inside) bonusDlg.close('canceled');
 });
 
-// CSV export
+// ================= LOCALSTORAGE (HISTORIAL PERSISTENTE) =================
+function saveToStorage() {
+  localStorage.setItem('controlGastosHistorial', JSON.stringify(months));
+}
+
+function loadFromStorage() {
+  const data = localStorage.getItem('controlGastosHistorial');
+  if (data) {
+    months = JSON.parse(data);
+  }
+}
+
+// ================= CSV =================
 document.getElementById("download-csv").onclick = () => {
   let csvContent = "data:text/csv;charset=utf-8,";
   csvContent += "Mes,Salario,Primas,Gastos Fijos,Gastos Inesperados,Saldo\n";
   Object.keys(months)
     .sort()
     .forEach((k) => {
-      const totalBonuses = mObj.bonuses.reduce((a,e)=>a+e.amount,0);
-csvContent += `${k},${mObj.salary},${totalBonuses},${totalFixed},${totalUnexpected},${balance}\n`;
-
       const mObj = months[k];
-      ["fixedExpenses", "unexpectedExpenses"].forEach((tipo) => {
-        mObj[tipo].forEach((exp) => {
-          csvContent += `${k},${tipo === "fixedExpenses" ? "Fijo" : "Inesperado"},${exp.name},${exp.description || ""},${
-            exp.amount
-          },${exp.date || ""},${exp.paid ? "Sí" : "No"}\n`;
-        });
-      });
+      const totalFixed = mObj.fixedExpenses.reduce((a, e) => a + e.amount, 0);
+      const totalUnexpected = mObj.unexpectedExpenses.reduce((a, e) => a + e.amount, 0);
+      const totalBonuses = (mObj.bonuses || []).reduce((a, e) => a + e.amount, 0);
+      const balance = mObj.salary + totalBonuses - totalFixed - totalUnexpected;
+      csvContent += `${k},${mObj.salary},${totalBonuses},${totalFixed},${totalUnexpected},${balance}\n`;
     });
 
   const encodedUri = encodeURI(csvContent);
@@ -463,29 +478,7 @@ csvContent += `${k},${mObj.salary},${totalBonuses},${totalFixed},${totalUnexpect
   link.click();
   document.body.removeChild(link);
 };
-// Guarda todos los datos en localStorage
-function saveToStorage() {
-  localStorage.setItem('controlGastosHistorial', JSON.stringify(months));
-  alert("¡Mes guardado! El historial permanece aunque cierres la app.");
-}
 
-// Carga los datos guardados al abrir la app
-function loadFromStorage() {
-  const data = localStorage.getItem('controlGastosHistorial');
-  if (data) months = JSON.parse(data);
-}
-
-// Llama esto al iniciar
+// ================= INICIO =================
 loadFromStorage();
 render();
-
-// Modifica tu botón “Guardar Mes”
-document.getElementById("save-month").onclick = () => {
-  saveToStorage();
-  render();
-};
-
-// Tu sección historial muestra todo lo guardado (ya lo hace el render actual)
-
-// Modifica el botón para descargar CSV para tomar datos de months (ya lo hace el código anterior)
-
