@@ -126,6 +126,11 @@ td:first-child {
   box-shadow: 0 2px 12px #3335;
   min-width: 320px;
 }
+#bonus-list li {
+  background: #e8f8f5;
+  border-left: 4px solid #16a085;
+}
+
 dialog[open] {
   animation: fadeIn 0.2s;
 }
