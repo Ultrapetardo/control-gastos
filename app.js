@@ -438,10 +438,13 @@ bonusDlg.addEventListener('click', function(ev) {
 // CSV export
 document.getElementById("download-csv").onclick = () => {
   let csvContent = "data:text/csv;charset=utf-8,";
-  csvContent += "Mes,Tipo,Gasto,Descripcion,Monto,Fecha limite,Pagado\n";
+  csvContent += "Mes,Salario,Primas,Gastos Fijos,Gastos Inesperados,Saldo\n";
   Object.keys(months)
     .sort()
     .forEach((k) => {
+      const totalBonuses = mObj.bonuses.reduce((a,e)=>a+e.amount,0);
+csvContent += `${k},${mObj.salary},${totalBonuses},${totalFixed},${totalUnexpected},${balance}\n`;
+
       const mObj = months[k];
       ["fixedExpenses", "unexpectedExpenses"].forEach((tipo) => {
         mObj[tipo].forEach((exp) => {
