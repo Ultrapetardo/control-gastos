@@ -4,7 +4,6 @@ const fmtCOP = new Intl.NumberFormat('es-CO', {
   maximumFractionDigits: 0,
 });
 
-// Estado por mes
 let monthNames = [
   "Enero","Febrero","Marzo","Abril","Mayo","Junio",
   "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"
@@ -13,16 +12,16 @@ let currentMonth = new Date().getMonth();
 let currentYear = new Date().getFullYear();
 let months = {};
 let alertsConfig = {
-  percentage: 80, // alerta general al 80% del salario
+  percentage: 80,
 };
 
 function monthKey(month, year) {
   return `${year}-${(month + 1).toString().padStart(2, "0")}`;
 }
 
-// Inicializa selector de meses (años desde año actual-1 hasta año actual+5)
+// Selector de meses (solo año actual y anterior, simple y estable)
 const monthSelect = document.getElementById("month-select");
-for (let y = currentYear - 1; y <= currentYear + 5; y++) {
+for (let y = currentYear - 1; y <= currentYear; y++) {
   for (let m = 0; m < 12; m++) {
     const mk = monthKey(m, y);
     const opt = document.createElement("option");
@@ -39,7 +38,6 @@ monthSelect.onchange = () => {
   render();
 };
 
-// Pestañas
 document.getElementById("tab-actual").onclick = () => {
   document.getElementById("tab-content-actual").classList.remove("hidden");
   document.getElementById("tab-content-actual").classList.add("visible");
@@ -62,7 +60,6 @@ function getMonthObj() {
   if (!months[key]) {
     months[key] = {
       salary: 0,
-      bonuses: [],            // NUEVO: lista de primas
       fixedExpenses: [],
       unexpectedExpenses: [],
       alerts: [],
@@ -71,7 +68,7 @@ function getMonthObj() {
   return months[key];
 }
 
-// Guardar salario
+// Salario
 document.getElementById("save-salary").onclick = () => {
   let obj = getMonthObj();
   obj.salary = Number(document.getElementById("salary-input").value) || 0;
@@ -104,41 +101,7 @@ document.getElementById("import-prev-month").onclick = () => {
   alert("Gastos fijos importados del mes anterior.");
 };
 
-// ================= PRIMAS =================
-document.getElementById('add-bonus').onclick = () => openBonusDialog();
-
-function renderBonuses() {
-  let obj = getMonthObj();
-  const list = document.getElementById('bonus-list');
-  list.innerHTML = '';
-  obj.bonuses.forEach((bonus, i) => {
-    const li = document.createElement('li');
-    let fechaBonus = bonus.date ? ` (${bonus.date})` : '';
-    li.innerHTML = `<span>${bonus.name}: ${fmtCOP.format(bonus.amount)}${fechaBonus}</span>
-      <span class="gasto-actions">
-        <button onclick="editBonus(${i})">✏️</button>
-        <button onclick="deleteBonus(${i})">🗑️</button>
-      </span>`;
-    list.appendChild(li);
-  });
-  const total = obj.bonuses.reduce((a, e) => a + e.amount, 0);
-  document.getElementById('bonus-total').textContent = 'Total primas: ' + fmtCOP.format(total);
-}
-
-window.editBonus = function(idx) {
-  let obj = getMonthObj();
-  openBonusDialog(obj.bonuses[idx], idx);
-};
-
-window.deleteBonus = function(idx) {
-  let obj = getMonthObj();
-  if (confirm('¿Eliminar esta prima?')) {
-    obj.bonuses.splice(idx, 1);
-    render();
-  }
-};
-
-// ================= GASTOS FIJOS =================
+// GASTOS FIJOS
 document.getElementById("add-fixed").onclick = () => openExpenseDialog("fixed");
 
 function renderFixed() {
@@ -146,7 +109,7 @@ function renderFixed() {
   const list = document.getElementById("fixed-list");
   list.innerHTML = "";
   obj.fixedExpenses.forEach((exp, i) => {
-    let fechaLim = exp.date ? ` (limite: ${exp.date})` : "";
+    let fechaLim = exp.date ? ` (límite: ${exp.date})` : "";
     let descripcion = exp.description ? ` | ${exp.description}` : "";
     let fechaGasto = exp.expenseDate ? ` (fecha gasto: ${exp.expenseDate})` : "";
     const clasePagado = exp.paid ? "paid" : "";
@@ -166,7 +129,7 @@ function renderFixed() {
   document.getElementById("fixed-total").textContent = "Total: " + fmtCOP.format(total);
 }
 
-// ================= GASTOS INESPERADOS =================
+// GASTOS INESPERADOS
 document.getElementById("add-unexpected").onclick = () => openExpenseDialog("unexpected");
 
 function renderUnexpected() {
@@ -193,7 +156,23 @@ function renderUnexpected() {
   document.getElementById("unexpected-total").textContent = "Total: " + fmtCOP.format(total);
 }
 
-// Toggle pagado
+// Editar / eliminar gasto
+window.editExpense = function (type, idx) {
+  let obj = getMonthObj();
+  let exp = type === "fixed" ? obj.fixedExpenses[idx] : obj.unexpectedExpenses[idx];
+  openExpenseDialog(type, exp, idx);
+};
+
+window.deleteExpense = function (type, idx) {
+  let obj = getMonthObj();
+  if (confirm("¿Eliminar este gasto?")) {
+    if (type === "fixed") obj.fixedExpenses.splice(idx, 1);
+    else obj.unexpectedExpenses.splice(idx, 1);
+    render();
+  }
+};
+
+// Pagado
 window.togglePaid = (type, index, checked) => {
   let obj = getMonthObj();
   if (type === "fixed") {
@@ -204,39 +183,23 @@ window.togglePaid = (type, index, checked) => {
   render();
 };
 
-// Editar / eliminar gasto
-window.editExpense = function (type, idx) {
-  let obj = getMonthObj();
-  let exp = type === "fixed" ? obj.fixedExpenses[idx] : obj.unexpectedExpenses[idx];
-  openExpenseDialog(type, exp, idx);
-};
-window.deleteExpense = function (type, idx) {
-  let obj = getMonthObj();
-  if (confirm("¿Eliminar este gasto?")) {
-    if (type === "fixed") obj.fixedExpenses.splice(idx, 1);
-    else obj.unexpectedExpenses.splice(idx, 1);
-    render();
-  }
-};
-
-// ================= SALDO =================
+// Saldo
 function renderBalance() {
   let obj = getMonthObj();
   const totalFixed = obj.fixedExpenses.reduce((a, e) => a + e.amount, 0);
   const totalUnexpected = obj.unexpectedExpenses.reduce((a, e) => a + e.amount, 0);
-  const totalBonuses = obj.bonuses.reduce((a, e) => a + e.amount, 0);
-  const balance = obj.salary + totalBonuses - totalFixed - totalUnexpected;
+  const balance = obj.salary - totalFixed - totalUnexpected;
   document.getElementById("balance-display").textContent = fmtCOP.format(balance);
 }
 
-// ================= SALARIO MOSTRADO =================
+// Salario mostrado
 function renderSalary() {
   let obj = getMonthObj();
   document.getElementById("salary-input").value = obj.salary > 0 ? obj.salary : "";
   document.getElementById("salary-display").textContent = obj.salary > 0 ? fmtCOP.format(obj.salary) : "";
 }
 
-// ================= HISTORIAL =================
+// Historial
 function renderHistoryTable() {
   const tbody = document.querySelector("#history-table tbody");
   tbody.innerHTML = "";
@@ -248,13 +211,11 @@ function renderHistoryTable() {
       const month = Number(monthRaw) - 1;
       const totalFixed = mObj.fixedExpenses.reduce((a, e) => a + e.amount, 0);
       const totalUnexpected = mObj.unexpectedExpenses.reduce((a, e) => a + e.amount, 0);
-      const totalBonuses = mObj.bonuses ? mObj.bonuses.reduce((a, e) => a + e.amount, 0) : 0;
-      const balance = mObj.salary + totalBonuses - totalFixed - totalUnexpected;
+      const balance = mObj.salary - totalFixed - totalUnexpected;
 
       const tr = document.createElement("tr");
       tr.innerHTML = `<td>${monthNames[month]} ${year}</td>
       <td>${fmtCOP.format(mObj.salary)}</td>
-      <td>${fmtCOP.format(totalBonuses)}</td>
       <td>${fmtCOP.format(totalFixed)}</td>
       <td>${fmtCOP.format(totalUnexpected)}</td>
       <td>${fmtCOP.format(balance)}</td>`;
@@ -262,7 +223,7 @@ function renderHistoryTable() {
     });
 }
 
-// ================= ALERTAS =================
+// Alertas
 function renderAlerts() {
   let obj = getMonthObj();
   const ul = document.getElementById("alerts-list");
@@ -291,22 +252,21 @@ function renderAlerts() {
   }
 }
 
-// ================= GRÁFICO =================
+// Gráfico
 let summaryChart;
 function renderGraph() {
   let obj = getMonthObj();
   const ctx = document.getElementById("summaryChart").getContext("2d");
   const totalFixed = obj.fixedExpenses.reduce((a, e) => a + e.amount, 0);
   const totalUnexpected = obj.unexpectedExpenses.reduce((a, e) => a + e.amount, 0);
-  const totalBonuses = obj.bonuses.reduce((a, e) => a + e.amount, 0);
-  const balance = obj.salary + totalBonuses - totalFixed - totalUnexpected;
+  const balance = obj.salary - totalFixed - totalUnexpected;
 
   const data = {
-    labels: ["Gastos Fijos", "Gastos Inesperados", "Primas", "Saldo"],
+    labels: ["Gastos Fijos", "Gastos Inesperados", "Saldo"],
     datasets: [
       {
-        data: [totalFixed, totalUnexpected, totalBonuses, Math.max(balance, 0)],
-        backgroundColor: ["#3498db", "#e67e22", "#9b59b6", "#16a085"],
+        data: [totalFixed, totalUnexpected, Math.max(balance, 0)],
+        backgroundColor: ["#3498db", "#e67e22", "#16a085"],
       },
     ],
   };
@@ -318,10 +278,9 @@ function renderGraph() {
   });
 }
 
-// ================= RENDER GLOBAL =================
+// Render global
 function render() {
   renderSalary();
-  renderBonuses();
   renderFixed();
   renderUnexpected();
   renderBalance();
@@ -330,7 +289,7 @@ function render() {
   renderGraph();
 }
 
-// ================= MODAL GASTOS =================
+// Modal gastos
 const dlg = document.getElementById("expenseDialog");
 const form = document.getElementById("expenseForm");
 const btnCancel = document.getElementById("btnCancel");
@@ -398,56 +357,10 @@ dlg.addEventListener("click", function (ev) {
   if (!inside) dlg.close("canceled");
 });
 
-// ================= MODAL PRIMAS =================
-const bonusDlg = document.getElementById('bonusDialog');
-const bonusForm = document.getElementById('bonusForm');
-let editBonusIdx = null;
-
-function openBonusDialog(bonus = null, idx = null) {
-  editBonusIdx = idx;
-  bonusForm.reset();
-  if (bonus) {
-    document.getElementById('bonusName').value = bonus.name || '';
-    document.getElementById('bonusAmount').value = bonus.amount || '';
-    document.getElementById('bonusDate').value = bonus.date || '';
-  }
-  bonusDlg.showModal();
-  document.getElementById('bonusName').focus();
-}
-
-bonusForm.onsubmit = function(e) {
-  e.preventDefault();
-  if (!bonusForm.reportValidity()) return;
-  const name = document.getElementById('bonusName').value.trim();
-  const amount = Number(document.getElementById('bonusAmount').value);
-  const date = document.getElementById('bonusDate').value;
-  let obj = getMonthObj();
-  const nuevo = { name, amount, date };
-  if (editBonusIdx != null) obj.bonuses[editBonusIdx] = nuevo;
-  else obj.bonuses.push(nuevo);
-  bonusDlg.close('saved');
-  render();
-  editBonusIdx = null;
-};
-
-document.getElementById('btnBonusCancel').onclick = function() {
-  bonusDlg.close('canceled');
-};
-bonusDlg.addEventListener('close', function() {
-  if (bonusDlg.returnValue !== 'saved') bonusForm.reset();
-});
-bonusDlg.addEventListener('click', function(ev) {
-  const r = bonusDlg.getBoundingClientRect();
-  const inside =
-    ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom;
-  if (!inside) bonusDlg.close('canceled');
-});
-
-// ================= LOCALSTORAGE (HISTORIAL PERSISTENTE) =================
+// LocalStorage
 function saveToStorage() {
   localStorage.setItem('controlGastosHistorial', JSON.stringify(months));
 }
-
 function loadFromStorage() {
   const data = localStorage.getItem('controlGastosHistorial');
   if (data) {
@@ -455,19 +368,18 @@ function loadFromStorage() {
   }
 }
 
-// ================= CSV =================
+// CSV export
 document.getElementById("download-csv").onclick = () => {
   let csvContent = "data:text/csv;charset=utf-8,";
-  csvContent += "Mes,Salario,Primas,Gastos Fijos,Gastos Inesperados,Saldo\n";
+  csvContent += "Mes,Salario,Gastos Fijos,Gastos Inesperados,Saldo\n";
   Object.keys(months)
     .sort()
     .forEach((k) => {
       const mObj = months[k];
       const totalFixed = mObj.fixedExpenses.reduce((a, e) => a + e.amount, 0);
       const totalUnexpected = mObj.unexpectedExpenses.reduce((a, e) => a + e.amount, 0);
-      const totalBonuses = (mObj.bonuses || []).reduce((a, e) => a + e.amount, 0);
-      const balance = mObj.salary + totalBonuses - totalFixed - totalUnexpected;
-      csvContent += `${k},${mObj.salary},${totalBonuses},${totalFixed},${totalUnexpected},${balance}\n`;
+      const balance = mObj.salary - totalFixed - totalUnexpected;
+      csvContent += `${k},${mObj.salary},${totalFixed},${totalUnexpected},${balance}\n`;
     });
 
   const encodedUri = encodeURI(csvContent);
@@ -479,6 +391,6 @@ document.getElementById("download-csv").onclick = () => {
   document.body.removeChild(link);
 };
 
-// ================= INICIO =================
+// Inicio
 loadFromStorage();
 render();
